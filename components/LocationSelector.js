@@ -91,9 +91,9 @@ const LocationSelector = forwardRef(function LocationSelector({ onSelectionChang
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">Select Location</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md mb-4 sm:mb-6">
+      <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-800">Select Location</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             State

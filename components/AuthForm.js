@@ -107,7 +107,7 @@ export default function AuthForm() {
   }
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8">
+    <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-4 sm:p-6 md:p-8">
       <div className="flex gap-4 mb-6 border-b">
         <button
           type="button"

@@ -40,7 +40,7 @@ export default function DriverList({ state, district, sub_location }) {
   if (!state || !district || !sub_location) {
     return (
       <div className="text-center py-12 text-gray-500">
-        <p>Please select a state, district, and sub-location, then click "Search Drivers" to view available drivers</p>
+        <p>Please select a state, district, and sub-location, then click &quot;Search Drivers&quot; to view available drivers</p>
       </div>
     )
   }

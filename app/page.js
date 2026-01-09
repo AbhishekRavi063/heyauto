@@ -25,29 +25,29 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
+      <main className="container mx-auto px-4 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8 text-center">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2 sm:mb-4">
             Find Auto Drivers in Kerala
           </h1>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-600 text-sm sm:text-base md:text-lg px-2">
             Select your location and click search to see available auto drivers
           </p>
         </div>
 
         <LocationSelector ref={locationSelectorRef} />
         
-        <div className="mb-6 flex justify-center">
+        <div className="mb-4 sm:mb-6 flex justify-center">
           <button
             onClick={handleSearch}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg shadow-md hover:shadow-lg"
+            className="w-full sm:w-auto bg-blue-600 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-base sm:text-lg shadow-md hover:shadow-lg"
           >
             Search Drivers
           </button>
         </div>
 
-        <div className="mt-8">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+        <div className="mt-6 sm:mt-8">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 sm:mb-6">
             Available Drivers
           </h2>
           <DriverList state={searchState} district={searchDistrict} sub_location={searchSubLocation} />

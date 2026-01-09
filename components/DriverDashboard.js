@@ -233,31 +233,31 @@ export default function DriverDashboard() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-3 sm:p-4 md:p-6">
       <Toast
         message={toast.message}
         type={toast.type}
         isVisible={toast.isVisible}
         onClose={hideToast}
       />
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Driver Dashboard</h1>
-            <p className="text-gray-600">Welcome, {driver.name}!</p>
+      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 md:p-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4 sm:mb-6">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Driver Dashboard</h1>
+            <p className="text-gray-600 text-sm sm:text-base">Welcome, {driver.name}!</p>
           </div>
           <button
             onClick={handleLogout}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            className="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
           >
             Logout
           </button>
         </div>
 
-        <div className="mb-8">
-          <div className="flex items-start gap-6">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
             {driver.photo_url && (
-              <div className="relative w-32 h-32 rounded-lg overflow-hidden flex-shrink-0 border-2 border-gray-200">
+              <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden flex-shrink-0 border-2 border-gray-200 mx-auto sm:mx-0">
                 <Image
                   src={driver.photo_url}
                   alt={driver.name}
@@ -267,18 +267,20 @@ export default function DriverDashboard() {
                 />
               </div>
             )}
-            <div className="space-y-2 text-gray-700 flex-1">
+            <div className="space-y-2 text-gray-700 flex-1 w-full text-sm sm:text-base">
               <p><span className="font-semibold">Phone:</span> {driver.phone}</p>
               <p><span className="font-semibold">Address:</span> {driver.address}</p>
               <p><span className="font-semibold">Auto Number:</span> {driver.auto_registration_number}</p>
               {driver.license_id_image_url && (
                 <div className="mt-4">
                   <p className="font-semibold mb-2">License ID:</p>
-                  <div className="relative w-48 h-32 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50">
-                    <img
+                  <div className="relative w-full sm:w-48 h-32 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50">
+                    <Image
                       src={`/api/drivers/license-image?path=${encodeURIComponent(driver.license_id_image_url)}`}
                       alt="License ID"
-                      className="w-full h-full object-contain"
+                      fill
+                      className="object-contain"
+                      unoptimized
                     />
                   </div>
                 </div>
@@ -287,18 +289,18 @@ export default function DriverDashboard() {
           </div>
         </div>
 
-        <div className="border-t pt-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Availability Status</h2>
-              <p className="text-sm text-gray-600">
+        <div className="border-t pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+            <div className="flex-1">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-1 sm:mb-2">Availability Status</h2>
+              <p className="text-xs sm:text-sm text-gray-600">
                 {localIsActive ? 'You will be active after update' : 'You will be inactive after update'}
               </p>
             </div>
             <button
               onClick={handleToggleStatus}
               disabled={updating}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
                 localIsActive ? 'bg-blue-600' : 'bg-gray-300'
               }`}
             >
@@ -311,7 +313,7 @@ export default function DriverDashboard() {
           </div>
 
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Active Location</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Active Location</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -377,7 +379,7 @@ export default function DriverDashboard() {
                       setShowAddLocation(!showAddLocation)
                       setNewLocationName('')
                     }}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
+                    className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap text-sm sm:text-base"
                     title="Add new sub-location"
                     disabled={!selectedDistrict}
                   >
@@ -385,41 +387,43 @@ export default function DriverDashboard() {
                   </button>
                 </div>
                 {showAddLocation && (
-                  <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="mt-2 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                       New Sub-Location Name
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
                         value={newLocationName}
                         onChange={(e) => setNewLocationName(e.target.value)}
                         placeholder="Enter sub-location name"
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm sm:text-base"
                         onKeyPress={(e) => {
                           if (e.key === 'Enter') {
                             handleAddLocation()
                           }
                         }}
                       />
-                      <button
-                        type="button"
-                        onClick={handleAddLocation}
-                        disabled={addingLocation || !newLocationName.trim()}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                      >
-                        {addingLocation ? 'Adding...' : 'Add'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowAddLocation(false)
-                          setNewLocationName('')
-                        }}
-                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                      >
-                        Cancel
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAddLocation}
+                          disabled={addingLocation || !newLocationName.trim()}
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
+                        >
+                          {addingLocation ? 'Adding...' : 'Add'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddLocation(false)
+                            setNewLocationName('')
+                          }}
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors text-sm sm:text-base"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -428,12 +432,12 @@ export default function DriverDashboard() {
             <button
               onClick={handleLocationUpdate}
               disabled={updating || !selectedDistrict || !selectedSubLocation}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               {updating ? 'Updating...' : 'Update Status & Location'}
             </button>
             {driver.active_location && (
-              <p className="mt-2 text-sm text-gray-600">
+              <p className="mt-2 text-xs sm:text-sm text-gray-600 break-words">
                 Current active location: {driver.active_state} - {driver.active_district} - {driver.active_location}
               </p>
             )}

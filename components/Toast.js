@@ -36,8 +36,8 @@ export default function Toast({ message, type = 'success', isVisible, onClose })
   )
 
   return (
-    <div className="fixed top-4 right-4 z-50 animate-slide-in">
-      <div className={`${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-md`}>
+    <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 animate-slide-in">
+      <div className={`${bgColor} text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg shadow-lg flex items-center gap-3 w-full sm:min-w-[300px] sm:max-w-md`}>
         <div className="flex-shrink-0">
           {icon}
         </div>

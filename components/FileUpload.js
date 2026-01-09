@@ -33,9 +33,9 @@ export default function FileUpload({ label, name, accept, required = false, onFi
       <label className="block text-sm font-medium text-gray-700 mb-2">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
-      <div className="mt-1 flex items-center gap-4">
-        <label className="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors">
-          <span className="text-sm text-gray-700">Choose File</span>
+      <div className="mt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+        <label className="cursor-pointer bg-white border border-gray-300 rounded-lg px-3 sm:px-4 py-2 hover:bg-gray-50 transition-colors text-center sm:text-left">
+          <span className="text-xs sm:text-sm text-gray-700">Choose File</span>
           <input
             type="file"
             name={name}
@@ -46,7 +46,7 @@ export default function FileUpload({ label, name, accept, required = false, onFi
           />
         </label>
         {fileName && (
-          <span className="text-sm text-gray-600">{fileName}</span>
+          <span className="text-xs sm:text-sm text-gray-600 truncate">{fileName}</span>
         )}
       </div>
       {preview && (
@@ -55,7 +55,7 @@ export default function FileUpload({ label, name, accept, required = false, onFi
           <img
             src={preview}
             alt="Preview"
-            className="max-w-xs max-h-48 rounded-lg border border-gray-300"
+            className="w-full sm:max-w-xs max-h-48 rounded-lg border border-gray-300 object-contain"
           />
         </div>
       )}
