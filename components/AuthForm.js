@@ -21,53 +21,45 @@ export default function AuthForm() {
 
     try {
       if (isLogin) {
-        // Login using client-side Supabase (sets cookies in browser automatically)
+        // Login using phone number and password
         const formData = new FormData(e.target)
-        const email = formData.get('email')
+        const phone = formData.get('phone')
         const password = formData.get('password')
 
-        console.log('🔐 Attempting login for:', email)
+        if (!phone || !password) {
+          setError('Phone number and password are required')
+          setLoading(false)
+          return
+        }
 
-        const supabase = createClient()
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        // Validate phone format
+        const phoneRegex = /^\d{10}$/
+        if (!phoneRegex.test(phone)) {
+          setError('Phone number must be exactly 10 digits')
+          setLoading(false)
+          return
+        }
+
+        console.log('🔐 Attempting login for phone:', phone)
+
+        // Use API route for login (handles phone lookup)
+        const response = await fetch('/api/drivers/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ phone, password }),
         })
 
-        if (authError) {
-          console.error('❌ Login error:', authError.message)
-          setError(authError.message || 'Login failed')
+        const data = await response.json()
+
+        if (!response.ok) {
+          setError(data.error || 'Login failed')
+          setLoading(false)
           return
         }
 
-        console.log('✅ Auth successful, user ID:', authData.user?.id)
-
-        // Verify driver exists
-        const { data: driver, error: driverError } = await supabase
-          .from('drivers')
-          .select('*')
-          .eq('user_id', authData.user.id)
-          .single()
-
-        if (driverError || !driver) {
-          console.error('❌ Driver profile error:', driverError?.message)
-          setError('Driver profile not found')
-          return
-        }
-
-        console.log('✅ Driver profile found:', driver.name)
-        
-        // Verify session is set
-        const { data: { session } } = await supabase.auth.getSession()
-        console.log('🔍 Session check:', session ? 'Session exists' : 'No session')
-        
-        if (!session) {
-          console.error('❌ No session after login, waiting...')
-          await new Promise(resolve => setTimeout(resolve, 500))
-          const { data: { session: retrySession } } = await supabase.auth.getSession()
-          console.log('🔍 Retry session check:', retrySession ? 'Session exists' : 'No session')
-        }
-
+        console.log('✅ Login successful')
         setSuccess('Login successful! Redirecting...')
         console.log('🔄 Redirecting to dashboard...')
         
@@ -221,17 +213,21 @@ export default function AuthForm() {
           </>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Email <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            name="email"
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-          />
-        </div>
+        {isLogin && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              required
+              maxLength="10"
+              placeholder="10 digit mobile number"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">

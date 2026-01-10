@@ -128,6 +128,7 @@ export default function DriverDashboard() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           state: selectedState,
           district: selectedDistrict,

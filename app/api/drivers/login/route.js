@@ -5,20 +5,55 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request) {
   try {
-    const { email, password } = await request.json()
+    const { phone, password } = await request.json()
 
-    if (!email || !password) {
+    if (!phone || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Phone number and password are required' },
         { status: 400 }
       )
     }
 
-    // Create response that will hold cookies - following middleware pattern
-    let supabaseResponse = NextResponse.next({
-      request,
-    })
+    // Validate phone format
+    const phoneRegex = /^\d{10}$/
+    if (!phoneRegex.test(phone)) {
+      return NextResponse.json(
+        { error: 'Phone number must be exactly 10 digits' },
+        { status: 400 }
+      )
+    }
+
+    // First, find driver by phone to get user_id
+    const { createAdminClient } = await import('@/lib/supabase/admin')
+    const adminClient = createAdminClient()
     
+    const { data: driverByPhone, error: driverByPhoneError } = await adminClient
+      .from('drivers')
+      .select('user_id, phone')
+      .eq('phone', phone)
+      .single()
+
+    if (driverByPhoneError || !driverByPhone) {
+      return NextResponse.json(
+        { error: 'Invalid phone number or password' },
+        { status: 401 }
+      )
+    }
+
+    // Get user email from auth using user_id
+    const { data: userData, error: userError } = await adminClient.auth.admin.getUserById(driverByPhone.user_id)
+    
+    if (userError || !userData?.user) {
+      return NextResponse.json(
+        { error: 'User account not found' },
+        { status: 401 }
+      )
+    }
+
+    const userEmail = userData.user.email // This will be phone@heyauto.local
+
+    // Use admin client to sign in via admin API (more reliable for cookie handling)
+    // First try regular auth, then handle session manually
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -27,136 +62,70 @@ export async function POST(request) {
           getAll() {
             return request.cookies.getAll()
           },
-          setAll(cookiesToSetArray) {
-            console.log('🍪 Supabase setAll called with', cookiesToSetArray.length, 'cookies')
-            cookiesToSetArray.forEach(({ name, value, options }) => {
-              console.log('  - Setting cookie:', name, 'value length:', value?.length)
-              // Update request cookies
-              request.cookies.set(name, value)
-              // Recreate response and set cookies on it (middleware pattern)
-              supabaseResponse = NextResponse.next({
-                request,
-              })
-              supabaseResponse.cookies.set(name, value, options || {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/',
-              })
-              console.log('    ✓ Cookie set in response:', name)
-            })
+          setAll() {
+            // Will be handled manually below
           },
         },
       }
     )
     
-    console.log('🔐 API Login: Attempting sign in for:', email)
+    console.log('🔐 API Login: Attempting sign in for phone:', phone)
 
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
+      email: userEmail,
       password,
     })
 
     if (authError) {
       console.error('❌ API Login error:', authError.message)
-      // Provide more detailed error message
-      let errorMessage = 'Invalid email or password'
-      if (authError.message.includes('Email not confirmed')) {
-        errorMessage = 'Please confirm your email before logging in'
-      } else if (authError.message.includes('Invalid login credentials')) {
-        errorMessage = 'Invalid email or password'
-      } else {
-        errorMessage = authError.message
-      }
       return NextResponse.json(
-        { error: errorMessage },
+        { error: 'Invalid phone number or password' },
         { status: 401 }
       )
     }
 
-    console.log('✅ API Login: Auth successful, user ID:', authData.user?.id)
-    console.log('🔍 Session from signIn:', authData.session ? 'exists' : 'none')
-    
-    // Force Supabase to set cookies by calling getSession
-    // This should trigger the setAll callback
-    const { data: { session: finalSession }, error: sessionError } = await supabase.auth.getSession()
-    console.log('🔍 Session from getSession:', finalSession ? 'exists' : 'none')
-    if (sessionError) {
-      console.error('❌ Session error:', sessionError.message)
-    }
-    
-    // Also call getUser to ensure cookies are set
-    await supabase.auth.getUser()
-    
-    // Check cookies in supabaseResponse
-    const cookiesAfterAuth = supabaseResponse.cookies.getAll()
-    console.log('🍪 After auth calls: Response has', cookiesAfterAuth.length, 'cookies')
-    cookiesAfterAuth.forEach(c => {
-      console.log('  - Cookie in response:', c.name)
-    })
-
-    // After sign in, the session should be available
-    // Get driver profile - try with regular client first, then admin client
-    let { data: driver, error: driverError } = await supabase
-      .from('drivers')
-      .select('*')
-      .eq('user_id', authData.user.id)
-      .single()
-
-    console.log('🔍 Driver query result:', driver ? `Found: ${driver.name}` : 'Not found')
-    if (driverError) {
-      console.log('🔍 Driver query error:', driverError.code, driverError.message)
-    }
-
-    // If not found or RLS blocks it, try with admin client
-    if ((driverError || !driver) && driverError?.code !== 'PGRST116') {
-      console.log('🔄 Trying with admin client...')
-      const { createAdminClient } = await import('@/lib/supabase/admin')
-      const adminClient = createAdminClient()
-      const { data: adminDriver, error: adminError } = await adminClient
-        .from('drivers')
-        .select('*')
-        .eq('user_id', authData.user.id)
-        .single()
-      
-      if (!adminError && adminDriver) {
-        console.log('✅ Found driver with admin client:', adminDriver.name)
-        driver = adminDriver
-        driverError = null
-      } else if (adminError) {
-        console.error('❌ Admin client error:', adminError.code, adminError.message)
-      }
-    }
-
-    if (driverError || !driver) {
-      console.error('❌ API Login: Driver profile error:', driverError?.message || 'No driver found')
-      console.error('❌ User ID:', authData.user.id)
-      console.error('❌ Error code:', driverError?.code)
-      
-      // Provide more helpful error message
-      let errorMessage = 'Driver profile not found. Please register your auto first.'
-      if (driverError?.code === 'PGRST116') {
-        errorMessage = 'Driver profile not found. Please complete your registration.'
-      }
-      
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: 404 }
-      )
-    }
-
-    console.log('✅ API Login: Driver found:', driver.name)
-
-    // Use the session we already have from signIn
-    if (!finalSession) {
-      console.error('❌ No session available!')
+    if (!authData.session) {
+      console.error('❌ No session from signIn!')
       return NextResponse.json(
         { error: 'Failed to create session' },
         { status: 500 }
       )
     }
+
+    console.log('✅ API Login: Auth successful, user ID:', authData.user?.id)
+    const finalSession = authData.session
+
+    // Get driver profile using admin client directly (RLS might block regular client)
+    console.log('🔍 Looking up driver with user_id:', authData.user.id)
+    const { data: driverProfile, error: driverProfileError } = await adminClient
+      .from('drivers')
+      .select('*')
+      .eq('user_id', authData.user.id)
+      .maybeSingle() // Use maybeSingle() instead of single() to avoid PGRST116 error
+
+    console.log('🔍 Driver query result:', driverProfile ? `Found: ${driverProfile.name}` : 'Not found')
+    if (driverProfileError) {
+      console.error('🔍 Driver query error:', driverProfileError.code, driverProfileError.message)
+    }
+
+    if (driverProfileError || !driverProfile) {
+      console.error('❌ API Login: Driver profile error:', driverProfileError?.message || 'No driver found')
+      console.error('❌ User ID:', authData.user.id)
+      console.error('❌ Error code:', driverProfileError?.code)
+      
+      return NextResponse.json(
+        { error: 'Driver profile not found. Please register your auto first.' },
+        { status: 404 }
+      )
+    }
+
+    console.log('✅ API Login: Driver found:', driverProfile.name)
     
-    console.log('🔍 Using session with access token length:', finalSession.access_token?.length)
+    // Create JSON response and manually set cookies
+    const jsonResponse = NextResponse.json({
+      driver: driverProfile,
+      message: 'Login successful'
+    })
     
     // Extract project ref from URL for cookie name
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -168,60 +137,30 @@ export async function POST(request) {
       )
     }
     
-    let projectRef
     try {
       const url = new URL(supabaseUrl)
-      projectRef = url.hostname.split('.')[0]
-    } catch (error) {
-      console.error('❌ Error parsing Supabase URL:', error)
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      )
-    }
-    
-    const authCookieName = `sb-${projectRef}-auth-token`
-    const authCookieValue = JSON.stringify({
-      access_token: finalSession.access_token,
-      refresh_token: finalSession.refresh_token,
-      expires_at: finalSession.expires_at,
-      expires_in: finalSession.expires_in,
-      token_type: finalSession.token_type,
-      user: finalSession.user,
-    })
-    
-    console.log('🔧 Setting cookie:', authCookieName, 'value length:', authCookieValue.length)
-    
-    // Create JSON response
-    const jsonResponse = NextResponse.json({
-      driver,
-      message: 'Login successful'
-    })
-    
-    // Copy ALL cookies from supabaseResponse (Supabase SSR sets these correctly)
-    const supabaseCookies = supabaseResponse.cookies.getAll()
-    console.log('📤 API Login: Found', supabaseCookies.length, 'cookies in supabaseResponse')
-    supabaseCookies.forEach(cookie => {
-      // Get the cookie options from supabaseResponse
-      jsonResponse.cookies.set(cookie.name, cookie.value, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-      })
-      console.log('  ✓ Set cookie:', cookie.name)
-    })
-    
-    // If Supabase didn't set cookies (shouldn't happen), fallback to manual setting
-    if (supabaseCookies.length === 0 && finalSession) {
-      console.warn('⚠️  No cookies from Supabase, setting manually')
-      jsonResponse.cookies.set(authCookieName, authCookieValue, {
+      const projectRef = url.hostname.split('.')[0]
+      const authCookieName = `sb-${projectRef}-auth-token`
+      
+      // Set the auth cookie manually
+      jsonResponse.cookies.set(authCookieName, JSON.stringify({
+        access_token: finalSession.access_token,
+        refresh_token: finalSession.refresh_token,
+        expires_at: finalSession.expires_at,
+        expires_in: finalSession.expires_in,
+        token_type: finalSession.token_type,
+        user: finalSession.user,
+      }), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
         maxAge: 60 * 60 * 24 * 7, // 7 days
       })
+      
+      console.log('✅ Set auth cookie:', authCookieName)
+    } catch (error) {
+      console.error('❌ Error setting cookies:', error)
     }
     
     const finalCookies = jsonResponse.cookies.getAll()

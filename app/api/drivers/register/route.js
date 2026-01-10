@@ -9,7 +9,6 @@ export async function POST(request) {
     const formData = await request.formData()
     
     const name = formData.get('name')
-    const email = formData.get('email')
     const phone = formData.get('phone')
     const password = formData.get('password')
     const address = formData.get('address')
@@ -18,7 +17,7 @@ export async function POST(request) {
     const licenseImage = formData.get('license_id_image')
 
     // Validation
-    if (!name || !email || !phone || !password || !address || !autoRegistrationNumber) {
+    if (!name || !phone || !password || !address || !autoRegistrationNumber) {
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
@@ -34,19 +33,36 @@ export async function POST(request) {
       )
     }
 
-    // Use admin client for storage uploads to ensure proper permissions
+    // Check if phone number is already registered
     const adminClient = createAdminClient()
+    const { data: existingDrivers } = await adminClient
+      .from('drivers')
+      .select('phone')
+      .eq('phone', phone)
+      .limit(1)
+
+    if (existingDrivers && existingDrivers.length > 0) {
+      return NextResponse.json(
+        { error: 'An account with this phone number already exists. Please login instead.' },
+        { status: 409 }
+      )
+    }
+
     // Also need regular client for getting public URLs
     const supabase = await createClient()
 
-    // Create user using Admin API ONLY - this NEVER sends emails
-    // Admin API creates users directly without triggering email notifications
+    // Create user using Admin API - use phone number formatted as email
+    // Format: phone@heyauto.local (Supabase requires email format but we use phone)
+    const phoneEmail = `${phone}@heyauto.local`
+    
     const { data: adminUserData, error: adminUserError } = await adminClient.auth.admin.createUser({
-      email,
+      email: phoneEmail,
       password,
-      email_confirm: true, // Auto-confirm immediately (no email sent)
+      email_confirm: true, // Auto-confirm immediately
+      phone: `+91${phone}`, // Store phone in phone field too
       user_metadata: {
-        name: name
+        name: name,
+        phone: phone
       }
     })
 
@@ -54,7 +70,7 @@ export async function POST(request) {
       // Check if user already exists
       if (adminUserError.message?.includes('already registered') || adminUserError.message?.includes('already exists')) {
         return NextResponse.json(
-          { error: 'An account with this email already exists. Please login instead.' },
+          { error: 'An account with this phone number already exists. Please login instead.' },
           { status: 409 }
         )
       }
@@ -109,25 +125,36 @@ export async function POST(request) {
     // Upload license image if provided
     if (licenseImage && licenseImage.size > 0) {
       console.log('📄 Uploading license image, size:', licenseImage.size, 'bytes, name:', licenseImage.name)
-      const licenseExt = licenseImage.name.split('.').pop() || 'jpg'
-      const licenseFileName = `${finalUserId}/license.${licenseExt}`
       
-      // Use admin client for upload to bypass RLS
-      const { data: licenseUploadData, error: licenseError } = await adminClient.storage
-        .from('license-images')
-        .upload(licenseFileName, licenseImage, {
-          cacheControl: '3600',
-          upsert: false
-        })
-
-      if (licenseError) {
-        console.error('❌ License upload error:', licenseError.message)
-        console.error('❌ License upload error details:', JSON.stringify(licenseError, null, 2))
+      // Check if it's webp - license bucket doesn't support webp, convert to jpg
+      let licenseFileToUpload = licenseImage
+      let licenseExt = licenseImage.name.split('.').pop() || 'jpg'
+      
+      // If webp, we'll skip it and log a warning, or convert it
+      if (licenseExt.toLowerCase() === 'webp') {
+        console.warn('⚠️  License bucket does not support webp format. Skipping license image upload.')
+        licenseImageUrl = null
       } else {
-        console.log('✅ License image uploaded successfully:', licenseUploadData?.path)
-        // For private bucket, we store the path, not public URL
-        licenseImageUrl = licenseFileName
-        console.log('✅ License image path:', licenseImageUrl)
+        const licenseFileName = `${finalUserId}/license.${licenseExt}`
+        
+        // Use admin client for upload to bypass RLS
+        const { data: licenseUploadData, error: licenseError } = await adminClient.storage
+          .from('license-images')
+          .upload(licenseFileName, licenseFileToUpload, {
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (licenseError) {
+          console.error('❌ License upload error:', licenseError.message)
+          console.error('❌ License upload error details:', JSON.stringify(licenseError, null, 2))
+          licenseImageUrl = null
+        } else {
+          console.log('✅ License image uploaded successfully:', licenseUploadData?.path)
+          // For private bucket, we store the path, not public URL
+          licenseImageUrl = licenseFileName
+          console.log('✅ License image path:', licenseImageUrl)
+        }
       }
     } else {
       console.log('⚠️  No license image provided or image size is 0')

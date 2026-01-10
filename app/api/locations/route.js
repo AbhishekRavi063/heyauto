@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -73,9 +74,41 @@ export async function POST(request) {
     const supabase = await createClient()
 
     // Check if user is authenticated
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    let { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    // If that fails, try to manually parse the cookie (fallback)
+    if (userError || !user) {
+      console.log('🔧 API /locations: Trying to manually parse auth cookie...')
+      const { cookies } = await import('next/headers')
+      const cookieStore = await cookies()
+      const allCookies = cookieStore.getAll()
+      const authCookie = allCookies.find(c => c.name.includes('auth-token'))
+      
+      if (authCookie) {
+        try {
+          const cookieData = JSON.parse(authCookie.value)
+          if (cookieData.access_token) {
+            console.log('  ✓ Found access_token in cookie, trying to set session...')
+            const { data: { session: manualSession }, error: manualError } = await supabase.auth.setSession({
+              access_token: cookieData.access_token,
+              refresh_token: cookieData.refresh_token,
+            })
+            if (manualSession) {
+              console.log('  ✅ Successfully created session from cookie!')
+              user = manualSession.user
+              userError = null
+            } else if (manualError) {
+              console.error('  ❌ Error setting session:', manualError.message)
+            }
+          }
+        } catch (e) {
+          console.error('  ❌ Error parsing cookie:', e.message)
+        }
+      }
+    }
 
     if (userError || !user) {
+      console.error('❌ API /locations: Unauthorized - user:', user ? 'exists' : 'none', 'error:', userError?.message)
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -103,8 +136,11 @@ export async function POST(request) {
       )
     }
 
+    // Use admin client to bypass RLS for inserting locations
+    const adminClient = createAdminClient()
+    
     // Insert new location (will fail if duplicate due to UNIQUE constraint)
-    const { data: newLocation, error } = await supabase
+    const { data: newLocation, error } = await adminClient
       .from('locations')
       .insert({
         state: trimmedState,
